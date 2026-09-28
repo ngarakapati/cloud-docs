@@ -1,37 +1,37 @@
 = Connect with pyTigerGraph
 :experimental:
 
-pyTigerGraph connects Python applications to your TigerGraph database, so your code can manage graphs, explore schemas, query graph data, load data, and perform database operations through one client.
+pyTigerGraph provides Python applications with programmatic access to TigerGraph databases.
+Applications can use the client to inspect schemas, read and write graph data, run queries, execute loading jobs, and perform administrative operations.
 
-This page explains what pyTigerGraph is and gets you from install to a successful call against your Savanna workspace.
+This page describes how to install pyTigerGraph, connect it to a Savanna workspace, and use its primary database functions.
 
 == What is pyTigerGraph?
 
-link:https://pypi.org/project/pyTigerGraph/[pyTigerGraph^] is TigerGraph's Python client.
-It wraps the REST{plus}{plus} and GSQL APIs: you create a `TigerGraphConnection`, pass the workspace and a database secret, and call methods on that object.
-Your script is the client. There is no server to install or keep running.
+link:https://pypi.org/project/pyTigerGraph/[pyTigerGraph^] is the supported Python client library for TigerGraph.
+It provides synchronous and asynchronous interfaces to the REST{plus}{plus} and GSQL APIs.
+An application creates a `TigerGraphConnection` with the Savanna workspace URL, graph name, and database secret, then invokes methods on that connection.
+The library runs within the application process and does not require a separate service.
 
-The method reference lives in the link:https://www.tigergraph.com/docs/pytigergraph/current/intro/[pyTigerGraph documentation^].
-This page covers the part that is specific to Savanna: which host to use, which credential to pass, and how to confirm the connection.
+For the complete API reference, see the link:https://www.tigergraph.com/docs/pytigergraph/current/intro/[pyTigerGraph documentation^].
+This page focuses on the connection values and authentication requirements specific to Savanna.
 
-== What you can do
+== Capabilities
 
-From your own code, you can:
+pyTigerGraph supports the following application workflows:
 
-* *Design and evolve graphs.* Create graphs, read schemas, and change vertex and edge types as the model changes.
-* *Read and write graph data.* Fetch vertices and edges, traverse neighbors, and upsert data from the application.
-* *Query the graph.* Run an installed query and take the result back into Python. You can also send GSQL when the application authors queries.
-* *Load data.* Create and run loading jobs, and read job status from the same connection.
-* *Work with vectors.* Manage vector attributes, upsert embeddings, and run similarity search. The optional `gds` extra streams vertices and edges into PyTorch Geometric, DGL, or Pandas. See the link:https://www.tigergraph.com/docs/pytigergraph/current/gds/[GDS documentation^].
+* *Schema management.* Create graphs, inspect schemas, and manage vertex and edge types.
+* *Graph data access.* Retrieve vertices and edges, traverse relationships, and upsert graph data.
+* *Query execution.* Run installed or interpreted GSQL queries and process their results as Python objects.
+* *Data loading.* Create and execute loading jobs and monitor their status.
+* *Vector and graph data science operations.* Manage vector attributes, upsert embeddings, perform similarity searches, and stream graph data into supported Python frameworks. See the link:https://www.tigergraph.com/docs/pytigergraph/current/gds/[GDS documentation^].
 
-You choose the call. The client sends it to the workspace you configured and returns the result.
+== Prerequisites
 
-== Before you start
-
-* A running Savanna xref:savanna:workgroup-workspace:workspaces/workspace.adoc[workspace] with an attached database. If you do not have one yet, xref:first-graph-ui.adoc[build a graph in the console] first.
+* A running Savanna xref:savanna:workgroup-workspace:workspaces/workspace.adoc[workspace] with an attached database. If necessary, xref:first-graph-ui.adoc[build a graph in Savanna] before continuing.
 * A database secret for that database. See xref:savanna:administration:settings/how2-create-database-secret.adoc[Create a database secret].
-* Python and `pip` on the machine that will run the script.
-* Your IP on the workgroup allowlist, when the workgroup has one. See xref:savanna:workgroup-workspace:workgroups/how2-config-network-access.adoc[Configure network access].
+* Python and `pip` installed in the application environment.
+* The application's source IP address on the workgroup allowlist, if an allowlist is enabled. See xref:savanna:workgroup-workspace:workgroups/how2-config-network-access.adoc[Configure network access].
 
 == Install
 
@@ -40,12 +40,12 @@ You choose the call. The client sends it to the workspace you configured and ret
 pip install pyTigerGraph
 ----
 
-For an asynchronous service, the package also provides `AsyncTigerGraphConnection` with the same connection arguments.
-The examples below use the synchronous client.
+The package also provides `AsyncTigerGraphConnection` for asynchronous applications.
+The following examples use the synchronous `TigerGraphConnection` client.
 
-== Configure your connection
+== Configure the connection
 
-A Savanna connection takes the workspace URL, the graph name, and a database secret.
+A connection to Savanna requires the workspace URL, graph name, and database secret.
 
 [cols="1,1,2",options="header"]
 |===
@@ -53,7 +53,7 @@ A Savanna connection takes the workspace URL, the graph name, and a database sec
 
 |`host`
 |Yes
-|Your Savanna workspace URL, including `https://`. Open *Workspaces*, select the workspace, and copy its URL. A Savanna host looks like `https://<workspace-id>.i.tgcloud.io`.
+|The Savanna workspace URL, including `https://`. In Savanna, open *Workspaces*, select the workspace, and copy its URL. The URL has the format `https://<workspace-id>.i.tgcloud.io`.
 
 |`gsqlSecret`
 |Yes
@@ -61,16 +61,16 @@ A Savanna connection takes the workspace URL, the graph name, and a database sec
 
 |`graphname`
 |Yes
-|The graph this connection uses. Create the graph in xref:savanna:graph-development:design-schema/index.adoc[Design Schema] if you do not have one yet.
+|The graph that the connection targets. If the graph does not exist, create it in xref:savanna:graph-development:design-schema/index.adoc[Design Schema].
 |===
 
-Savanna serves REST{plus}{plus} and GSQL on HTTPS port `443`.
-When the host contains `tgcloud`, pyTigerGraph selects that port for you.
-Leave `restppPort` and `gsPort` at their defaults.
+Savanna exposes REST{plus}{plus} and GSQL over HTTPS port `443`.
+For hosts containing `tgcloud`, pyTigerGraph selects this port automatically.
+Retain the default values for `restppPort` and `gsPort`.
 
 == Connect
 
-Read the three values from environment variables and open the connection:
+Read the connection values from environment variables and create the connection:
 
 [source,python]
 ----
@@ -87,28 +87,27 @@ print(conn.echo())
 print(conn.getVertexTypes())
 ----
 
-`echo()` returns a response when the workspace host answers.
-`getVertexTypes()` returns the vertex type names when the secret can read the graph.
-A list of names means the connection is working.
+`echo()` verifies that the workspace host is reachable.
+`getVertexTypes()` verifies authentication and graph access by returning the vertex types defined in the graph.
 
 [CAUTION]
 ====
-Store the database secret outside your code. It stays valid until you delete or revoke it.
-The calls below run on the connected database and can change or delete graph data.
+Store the database secret outside application code. It remains valid until it is deleted or revoked.
+pyTigerGraph operations run against the connected database and can modify or delete graph data.
 ====
 
 == Use common functions
 
-Every example below uses names from your graph.
-Create the schema, query, or loading job first, read its names back with pyTigerGraph, and pass those names into the next call.
-These are the common calls. For the complete method list, parameters, and return values, use the link:https://www.tigergraph.com/docs/pytigergraph/current/intro/[pyTigerGraph documentation^].
+The examples in this section use resource names from the connected graph.
+Create the required schema, query, or loading job before executing an example, then retrieve and pass its name to the relevant method.
+For the complete method list, parameters, and return values, see the link:https://www.tigergraph.com/docs/pytigergraph/current/intro/[pyTigerGraph documentation^].
 
 === Read the schema
 
-xref:first-graph-ui.adoc[Build a graph] or use xref:savanna:graph-development:design-schema/index.adoc[Design Schema] before these calls.
-`getSchema()` returns that schema.
-`getVertexTypes()` and `getEdgeTypes()` return the type names used by every later example.
-`getVertexCount()` and `getEdgeCount()` count the types you pass in.
+Before retrieving schema metadata, xref:first-graph-ui.adoc[build a graph] or define one with xref:savanna:graph-development:design-schema/index.adoc[Design Schema].
+`getSchema()` returns the graph schema.
+`getVertexTypes()` and `getEdgeTypes()` return the available type names.
+`getVertexCount()` and `getEdgeCount()` return the number of instances for specified types.
 
 Parameter and return details: link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/schema[Schema functions^], link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/vertex[Vertex functions^], and link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/edge[Edge functions^].
 
@@ -127,14 +126,14 @@ print(conn.getVertexCount(vertex_type))
 ----
 
 `getVertexAttrs()` returns `(attribute_name, attribute_type)` pairs.
-Use those attribute names in `select`, `where`, and upsert dictionaries.
+Use the returned attribute names in `select`, `where`, and upsert dictionaries.
 
 === Read vertices and edges
 
-Load data before reading it. See xref:savanna:graph-development:load-data/index.adoc[Load data].
-`getVerticesById()` reads one vertex by the primary ID you loaded.
+The graph must contain data before these methods return records. See xref:savanna:graph-development:load-data/index.adoc[Load data].
+`getVerticesById()` retrieves a vertex by primary ID.
 `getVertices()` filters one vertex type by attributes from `getVertexAttrs()`.
-`getEdges()` reads edges that start at that vertex. The edge type must be one of the names from `getEdgeTypes()`, and its endpoints must match `getEdgeSourceVertexType()` and `getEdgeTargetVertexType()`.
+`getEdges()` retrieves edges originating from a specified vertex. The edge type must be returned by `getEdgeTypes()`, and its endpoints must match `getEdgeSourceVertexType()` and `getEdgeTargetVertexType()`.
 
 [source,python]
 ----
@@ -157,15 +156,15 @@ neighbors = conn.getEdges(
 )
 ----
 
-Replace `YOUR_PRIMARY_ID` and `YOUR_VALUE` with a vertex and attribute value that exist in this graph.
-For a pandas result, use `getVertexDataFrame()` or `getEdgesDataFrame()`.
+Replace `YOUR_PRIMARY_ID` and `YOUR_VALUE` with values that exist in the connected graph.
+To return a pandas `DataFrame`, use `getVertexDataFrame()` or `getEdgesDataFrame()`.
 Full signatures: link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/vertex[Vertex functions^] and link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/edge[Edge functions^].
 
 === Add or update vertices and edges
 
-An upsert creates a record that does not exist and updates one that does.
+An upsert creates a record if it does not exist or updates the existing record.
 The vertex type, edge type, and attribute names must already exist in the schema from the previous section.
-Create any missing type in xref:savanna:graph-development:design-schema/index.adoc[Design Schema] before calling these methods.
+Create missing types in xref:savanna:graph-development:design-schema/index.adoc[Design Schema] before invoking these methods.
 
 [source,python]
 ----
@@ -177,7 +176,7 @@ conn.upsertVertex(vertex_type, "YOUR_PRIMARY_ID", {attribute_name: "YOUR_VALUE"}
 edge_type = conn.getEdgeTypes()[0]
 source_type = conn.getEdgeSourceVertexType(edge_type)
 target_type = conn.getEdgeTargetVertexType(edge_type)
-# If either call returns a set, choose the endpoint type your vertices use.
+# If either method returns a set, select the endpoint type used by the target vertices.
 
 conn.upsertEdge(
     sourceVertexType=source_type,
@@ -189,7 +188,7 @@ conn.upsertEdge(
 )
 ----
 
-`vertexMustExist=True` writes the edge only when both endpoint vertices already exist.
+`vertexMustExist=True` creates the edge only if both endpoint vertices exist.
 `upsertVertices()`, `upsertEdges()`, `upsertVertexDataFrame()`, and `upsertEdgeDataFrame()` apply the same rules to a batch or a pandas `DataFrame`.
 Column names must match the attribute names from `getVertexAttrs()` or `getEdgeAttrs()`.
 See link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/vertex[Vertex functions^] and link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/edge[Edge functions^].
@@ -198,8 +197,8 @@ See link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/ver
 
 . Write the query in the xref:savanna:graph-development:gsql-editor/index.adoc[GSQL Editor]. See xref:savanna:graph-development:gsql-editor/how2-edit-gsql-query.adoc[edit and run a query] and the https://www.tigergraph.com/docs/gsql-ref/4.3/querying/[GSQL query language^].
 . Install the query from the Query List. `runInstalledQuery()` can call only an installed query.
-. Read the installed name with `getInstalledQueries()`.
-. Read its parameter names with `getQueryMetadata()`, then pass those names in `params`.
+. Retrieve the installed query name with `getInstalledQueries()`.
+. Retrieve its parameter definitions with `getQueryMetadata()`, then pass those parameter names in `params`.
 
 [source,python]
 ----
@@ -213,14 +212,14 @@ result = conn.runInstalledQuery(
 print(result)
 ----
 
-Copy `YOUR_INSTALLED_QUERY` from `getInstalledQueries()`, and copy `YOUR_PARAMETER` from `getQueryMetadata()`.
+Replace `YOUR_INSTALLED_QUERY` with a name returned by `getInstalledQueries()`, and replace `YOUR_PARAMETER` with a parameter returned by `getQueryMetadata()`.
 Argument formats for strings, sets, and vertex parameters are in link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/query[Query functions^].
 
 === Run a loading job
 
 . Define the vertex and edge types in xref:savanna:graph-development:design-schema/index.adoc[Design Schema].
 . Create the loading job in xref:savanna:graph-development:load-data/index.adoc[Load data], including its file variable (`DEFINE FILENAME`).
-. Confirm the job name with `getLoadingJobs()`. The `fileTag` argument is that file variable, not the local filename.
+. Confirm the job name with `getLoadingJobs()`. Set `fileTag` to the job's file variable, not the local filename.
 
 [source,python]
 ----
@@ -236,15 +235,15 @@ result = conn.runLoadingJobWithFile(
 print(result)
 ----
 
-`runLoadingJobWithData()` accepts the file contents as a string.
+`runLoadingJobWithData()` accepts file content as a string.
 `runLoadingJobWithDataFrame()` accepts a pandas `DataFrame` whose columns follow the job's mapping.
-`getLoadingJobStatus()` checks a job run.
-Remove the header row before loading. A `USING HEADER="true"` clause in the job does not replace that step.
+`getLoadingJobStatus()` returns the status of a job run.
+Remove the header row before loading the data. A `USING HEADER="true"` clause in the loading job does not replace this requirement.
 Signatures: link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/loading[Loading job functions^].
 
 === Run a GSQL statement
 
-Use `gsql()` for a statement that has no dedicated method, such as showing the queries you created in the GSQL Editor.
+Use `gsql()` for operations that do not have a dedicated pyTigerGraph method, such as displaying queries created in the GSQL Editor.
 The connection's graph is the default graph. GSQL syntax is in the https://www.tigergraph.com/docs/gsql-ref/4.3/querying/[GSQL query language^], and the method contract is in link:https://www.tigergraph.com/docs/pytigergraph/current/core-functions/gsql[GSQL interface^].
 
 [source,python]
@@ -252,7 +251,7 @@ The connection's graph is the default graph. GSQL syntax is in the https://www.t
 print(conn.gsql(f"USE GRAPH {conn.graphname} SHOW QUERY ALL"))
 ----
 
-For application calls, prefer the method that matches the operation: `getSchema()` to read the schema, `runInstalledQuery()` to run an installed query, and `runLoadingJobWithFile()` to run a loading job.
+In application code, use the method specific to the required operation: `getSchema()` to retrieve a schema, `runInstalledQuery()` to execute an installed query, and `runLoadingJobWithFile()` to execute a loading job.
 
 == Troubleshooting
 
@@ -264,25 +263,26 @@ A hostname alone raises `Invalid URL scheme`.
 
 === Authentication failed
 
-Create the secret in Savanna for the same workspace, and pass the full value as `gsqlSecret`.
+Create a database secret for the target workspace and pass its complete value as `gsqlSecret`.
 A control-plane API key authenticates the xref:savanna:rest-api:index.adoc[Savanna REST API] and will not authenticate this connection.
 See xref:savanna:administration:settings/how2-create-database-secret.adoc[Create a database secret].
 
 === Connection error
 
-Check that:
+Verify the following:
 
 * The workspace status is active
 * `host` is that workspace's URL, including `https://`
 * `gsqlSecret` is a database secret for that workspace
 * `graphname` matches a graph in that database
-* Your IP is on the workgroup allowlist when one is enabled
+* The application's source IP address is on the workgroup allowlist, if an allowlist is enabled
 
 See xref:savanna:workgroup-workspace:workspaces/workspace.adoc[About workspaces] and xref:savanna:workgroup-workspace:workgroups/how2-config-network-access.adoc[Configure network access].
 
 == Feedback and contributions
 
-Found a bug or unexpected behavior in the client? Open an issue in the link:https://github.com/tigergraph/pyTigerGraph[pyTigerGraph GitHub repository^]. If you have a fix, submit a pull request.
+Report defects and unexpected behavior in the link:https://github.com/tigergraph/pyTigerGraph[pyTigerGraph GitHub repository^].
+Contributions can be submitted as pull requests to that repository.
 
 == Related
 
